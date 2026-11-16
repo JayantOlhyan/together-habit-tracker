@@ -31,7 +31,7 @@ These passwords are easy to guess and offer minimal privacy. Anyone who knows th
 
 No password environment variables are required. A random 256-bit session signing key is automatically created in the private site-wide Blobs store with an atomic create-if-new write. Both API functions read the same key; it survives deploys and never enters the browser or GitHub. An optional `SESSION_SECRET` environment variable (at least 32 characters) overrides that key. Changing it invalidates existing sessions.
 
-Sessions last seven days. The server compares name passwords case-insensitively using constant-time digest comparison. The old `JAYANT_PASSWORD`, `BABITA_PASSWORD`, and `NAVEEN_PASSWORD` variables are no longer used.
+Sessions persist across browser restarts for 365 days and renew on authenticated data reads. Explicit sign-out clears the cookie. Browser data removal, cookie eviction, or a signing key change can require sign-in again. The server compares name passwords case-insensitively using constant-time digest comparison. The old `JAYANT_PASSWORD`, `BABITA_PASSWORD`, and `NAVEEN_PASSWORD` variables are no longer used.
 
 ## Local development
 
@@ -62,3 +62,7 @@ Open `http://localhost:4173`. The local QA server uses memory, not the productio
 ## Source layout
 
 `public/` is the buildless frontend; `lib/` contains the shared model and server logic; `netlify/functions/` wraps the API and Netlify Blobs adapter; `scripts/` builds and runs the local QA server; `test/` contains Node tests. `npm run build` copies frontend assets and the shared model into `dist/`.
+
+## Interface review
+
+Mobile UX refinements were guided by Unslop by Damir Sokolovsky (@heydamir), CC BY 4.0: https://github.com/heydamir/unslop . See `docs/UI_REVIEW.md` for the audit and changes.

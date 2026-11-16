@@ -32,3 +32,17 @@ test('concurrent runtime initialization converges on one persistent random signi
   assert.match(results[0].SESSION_SECRET,/^[a-f0-9]{64}$/);
   assert.deepEqual(await runtimeEnvironment(store,{}),results[0]);
 });
+
+test('sign-in persists for a year, renews on reads, and explicit sign-out clears the cookie',async()=>{
+  const store=memoryStore();
+  const request=new Request('https://together.test/api/auth',{method:'POST',headers:{origin:'https://together.test'},body:JSON.stringify({person:'Jayant',password:'jayant'})});
+  const login=await authenticate(request,env),cookie=login.headers.get('set-cookie');
+  assert.match(cookie,/Max-Age=31536000/);
+  const payload=JSON.parse(Buffer.from(cookie.split('=')[1].split('.')[0],'base64url').toString());
+  assert.ok(payload.exp>Date.now()+364*86400000);
+  const refreshed=await handle(req('data'),env,()=>store);
+  assert.equal(refreshed.status,200);
+  assert.match(refreshed.headers.get('set-cookie'),/Max-Age=31536000/);
+  const logout=await authenticate(new Request('https://together.test/api/auth',{method:'DELETE',headers:{origin:'https://together.test',cookie:cookie.split(';')[0]}}),env);
+  assert.match(logout.headers.get('set-cookie'),/Max-Age=0/);
+});
