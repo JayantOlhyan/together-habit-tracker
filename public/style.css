@@ -194,11 +194,13 @@ th,td{padding:16px 20px;border-bottom:1px solid var(--line)}th{background:var(--
   #account{gap:8px}.account-name{display:none}.sync-state{font-size:12px}
   main{padding:24px 20px;min-height:calc(100dvh - 196px)}
   h1{font-size:28px;font-weight:500;letter-spacing:-.4px}h2{font-size:18px}
-  .page-heading{gap:16px;align-items:flex-start;flex-wrap:wrap;margin-bottom:16px}
-  .page-heading>.date-control{width:100%;justify-content:space-between}
+  .page-heading{gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+  .page-heading:has(.date-control){flex-wrap:nowrap}
+  .page-heading>div:first-child{min-width:0}
+  .page-heading>.date-control{width:auto;justify-content:space-between}
   .page-heading .subtext{font-size:13px;margin-top:4px}
   .date-control{min-height:48px;padding:0 4px}
-  .date-control input{width:156px;min-height:44px;font-size:16px;text-align:center}
+  .date-control input{width:116px;min-height:44px;font-size:16px;text-align:center}
   .hero{padding:16px 20px;min-height:112px;gap:16px;border-radius:14px}
   .hero-kicker{font-size:12px;margin-bottom:4px}.hero h2{font-size:30px}.hero h2 span{font-size:19px}.hero p{font-size:12px;margin-top:4px}
   .ring-wrap,.ring{width:64px;height:64px}.ring-label{font-size:18px}.ring-label small{font-size:12px}
@@ -240,6 +242,7 @@ th,td{padding:16px 20px;border-bottom:1px solid var(--line)}th{background:var(--
   .more-item{min-height:76px}.more-item small{font-size:12px}.more-item strong{font-size:16px}
 }
 @media(max-width:360px){
+  .page-heading:has(.date-control){flex-wrap:wrap}.page-heading>.date-control{width:100%}
   main{padding:20px 16px}.topbar{padding-left:16px;padding-right:16px}.hero{padding:16px;gap:8px}.hero h2 span{font-size:17px}.ring-wrap,.ring{width:56px;height:56px}.hero-kicker,.hero p{font-size:11px}
   .member-top{flex-direction:column;align-items:flex-start;gap:4px}.member{padding:8px;min-height:80px}.member-meta{margin-top:4px}
   .section-heading{gap:8px}.section-heading p{max-width:180px}.section-heading .button{padding:8px;font-size:12px}.habit-card{padding:16px}.habit-top{gap:8px}.habit-top h3{font-size:15px}
