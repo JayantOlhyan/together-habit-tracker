@@ -1,4 +1,5 @@
 import {PEOPLE,TEMPLATES,initialState,today,total,achieved} from './model.mjs';
+import {createApi} from './transport.mjs';
 
 const $=s=>document.querySelector(s), main=$('#main'), dialog=$('#dialog');
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -10,23 +11,19 @@ const unitLabel=(unit,n)=>Number(n)===1?({glasses:'glass',minutes:'minute',pages
 const format=n=>new Intl.NumberFormat('en-IN',{maximumFractionDigits:2}).format(n);
 const shift=(date,n)=>{const d=new Date(`${date}T12:00:00Z`);d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10);};
 const pretty=(date,opts={weekday:'long',month:'short',day:'numeric'})=>new Date(`${date}T12:00:00Z`).toLocaleDateString('en-IN',opts);
-let state={person:null,view:'today',member:'Jayant',date:today(),habits:[],entries:[],demo:false,configured:true,filter:'all',range:7,sync:'',loginPerson:'Jayant'};
+let state={person:null,view:'today',member:'Jayant',date:today(),habits:[],entries:[],demo:false,configured:true,filter:'all',range:7,sync:'',loginPerson:'Jayant',loadError:''};
 let busy=false,toastTimer;
 function toast(text,undoId){$('#toast').innerHTML=`<span>${esc(text)}</span>${undoId?button('Undo','undo','toast-undo',`data-id="${undoId}"`):''}`;$('#toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').classList.remove('show'),4500);}
 function showDialog(title,html){dialog.innerHTML=`<div class="dialog-heading"><h2 id="dialog-title">${esc(title)}</h2><button class="icon-button" data-action="close" aria-label="Close">${icon('close')}</button></div>${html}`;dialog.showModal();document.body.classList.add('dialog-open');}
 dialog.addEventListener('close',()=>document.body.classList.remove('dialog-open'));
 dialog.addEventListener('click',event=>{if(event.target===dialog){const r=dialog.getBoundingClientRect();if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)dialog.close();}});
 function paint(){document.querySelectorAll('[data-progress]').forEach(el=>{el.style.transform=`scaleX(${Math.max(0,Math.min(100,Number(el.dataset.progress)))/100})`;});document.querySelectorAll('[data-ring]').forEach(el=>{el.style.strokeDashoffset=String(327*(1-Number(el.dataset.ring)/100));});}
-async function api(path,body,method=body?'POST':'GET'){
-  const response=await fetch(`/api/${path}`,{method,credentials:'same-origin',cache:'no-store',headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined});
-  let data;try{data=await response.json();}catch{throw new Error('The server could not respond. Please try again.');}
-  if(!response.ok){const e=new Error(data.error|| (response.status===429?'Too many attempts. Wait a minute and try again.':'Unable to connect.'));e.status=response.status;throw e;}return data;
-}
+const api=createApi();
 async function refresh(){
   if(state.demo){const data=JSON.parse(sessionStorage.getItem('together-demo')||'null')||initialState();state.habits=data.habits;state.entries=data.entries;state.sync='Preview';return;}
   const month=state.date.slice(0,7), previous=shift(`${month}-01`,-1).slice(0,7);
   const [a,b]=await Promise.all([api(`data?month=${month}`),api(`data?month=${previous}`)]);
-  state.person=a.person;state.habits=a.habits;state.entries=[...a.entries,...b.entries];state.sync='Synced';
+  state.person=a.person;state.habits=a.habits;state.entries=[...a.entries,...b.entries];state.sync='Synced';state.loadError='';
 }
 async function save(path,input){
   if(state.demo){
@@ -70,6 +67,7 @@ function render(){
   $('#nav').innerHTML=navs.map(([key,label])=>`<button class="nav-button nav-${key} ${state.view===key?'active':''}" data-action="nav" data-view="${key}" ${state.view===key?'aria-current="page"':''}>${icon(key==='group'?'group':key)}<span>${label}</span></button>`).join('')+`<button class="nav-button nav-more ${['templates','trends','settings'].includes(state.view)?'active':''}" data-action="more" aria-haspopup="dialog">${icon('more')}<span>More</span></button>`;
   $('#account').innerHTML=state.person?`<span class="sync-state">${esc(state.sync)}</span><span class="account-name">${state.person}</span>${button(avatar(state.person),'account','account-button',`aria-label="Open ${state.person}’s settings"`)}`:`<span class="subtext">Shared habit tracker</span>`;
   if(!state.person){login();return;}
+  if(state.loadError){main.innerHTML=heading('Your shared space','You are still signed in')+`<section class="empty"><h2>Couldn’t load your habits</h2><p>${esc(state.loadError)}</p>${button('Retry connection','refresh','primary')}</section>`;return;}
   main.innerHTML=(state.demo?`<div class="notice"><span><strong>Preview</strong> · Saved only in this tab</span>${button('Exit preview','logout','small')}</div>`:'')+({today:daily,group,templates,history,trends,settings}[state.view]||daily)();paint();
 }
 function login(){main.innerHTML=`<section class="login"><div class="login-visual"><img src="/icon.svg" class="login-mark" width="48" height="48" alt=""><div><h1>Three people.<br>One daily check-in.</h1><p>Track your habits and see how Jayant, Babita and Naveen are getting on.</p></div><div class="login-members">${PEOPLE.map(avatar).join('')}<span>Your shared circle</span></div></div><form id="login-form" class="login-form"><h2>Choose your profile</h2><p class="subtext">Sign in once to log and view your shared habits</p><div class="login-people">${PEOPLE.map(p=>`<button type="button" class="person-choice ${state.loginPerson===p?'selected':''}" data-action="login-person" data-person="${p}" aria-pressed="${state.loginPerson===p}">${avatar(p)}${p}</button>`).join('')}</div>${!state.configured?'<div class="setup-note"><strong>Sign-in unavailable</strong><br>Check your connection and refresh to try again.</div>':''}<div class="field"><label for="password">Password</label><span class="password-field"><input id="password" type="password" name="password" autocomplete="current-password" placeholder="Enter your name" required maxlength="256" ${!state.configured?'disabled':''}><button type="button" class="password-toggle" data-action="password" aria-label="Show password" aria-pressed="false">Show</button></span></div><p class="form-error" id="login-error" role="alert"></p><button type="submit" class="button primary" ${!state.configured?'disabled':''}>Sign in ${icon('right')}</button><p class="login-note">Your password is your name, in any capitalisation. You’ll stay signed in on this device.</p><button type="button" class="soft-link" data-action="demo">Try a device-only preview</button></form></section>`;}
@@ -137,6 +135,21 @@ document.addEventListener('change',async event=>{try{const el=event.target;if(el
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&state.person&&!state.demo&&!busy&&!dialog.open)refresh().then(render).catch(()=>{state.sync='Offline · refresh needed';render();});});
 setInterval(()=>{if(state.person&&!state.demo&&!busy&&!dialog.open&&!document.hidden)refresh().then(render).catch(()=>{state.sync='Offline · refresh needed';render();});},30000);
 window.addEventListener('offline',()=>{state.sync='Offline · changes need internet';if(state.person)render();});
-async function start(){try{const status=await api('status');state.configured=status.configured;if(status.configured){try{await refresh();state.member=state.person;}catch(e){if(e.status!==401)toast(e.message);}}}catch{state.configured=false;toast('Shared space unavailable. Check your connection.');}render();}
+async function start(){
+  try {
+    const status=await api('status');state.configured=status.configured;
+    if(status.configured){
+      if(PEOPLE.includes(status.person)){state.person=status.person;state.member=status.person;}
+      try{await refresh();state.member=state.person;}
+      catch(error){
+        if(error.status===401){state.person=null;}
+        else if(state.person){state.loadError=error.message;state.sync='Connection interrupted';}
+        else toast(error.message);
+      }
+    }
+  }catch{state.configured=false;toast('Shared space unavailable. Check your connection.');}
+  render();
+}
+window.addEventListener('online',()=>{if(state.person&&!state.demo)refresh().then(render).catch(()=>{});else if(!state.person)start();});
 start();
 if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{});

@@ -66,3 +66,11 @@ Open `http://localhost:4173`. The local QA server uses memory, not the productio
 ## Interface review
 
 Mobile UX refinements were guided by Unslop by Damir Sokolovsky (@heydamir), CC BY 4.0: https://github.com/heydamir/unslop . See `docs/UI_REVIEW.md` for the audit and changes.
+
+## Storage credential lifecycle
+
+The site uses **Netlify Blobs**, store `together-family`. This is a site-wide key/value database, shared by all three profiles and retained across deployments. The `state` record contains habits and entries with an owner field. All authenticated profiles read the same records; edits remain scoped to the signed-in person.
+
+The Functions v2 runtime supplies scoped Blobs credentials automatically. No mobile API key, personal access token, Notion integration, or Supabase account is required. `getStore()` must run on each request: its client snapshots a temporary platform token. Caching that client across warm function invocations causes the token-expired failure fixed here. Session signing uses the existing persistent `session-signing-key` record and is independent of those temporary credentials.
+
+Storage SDK errors are returned as friendly retryable 503 responses. The client retries reads once, never silently retries writes, and preserves a known signed-in profile during a temporary read outage. The signed session cookie is not cleared by storage failures. The shared page refreshes every 30 seconds while visible, after a successful save, when returning to the page, or when reconnecting to the internet. Device-only preview data does not sync.
