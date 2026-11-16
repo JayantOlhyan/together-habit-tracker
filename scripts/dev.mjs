@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { resolve, extname } from 'node:path';
@@ -5,7 +6,7 @@ import { handle, authenticate } from '../lib/server.mjs';
 // Local QA only: shared state is in memory. Production always uses Netlify Blobs.
 let data=null,version=0;
 const store={async getWithMetadata(){return data?{data:structuredClone(data),etag:String(version)}:null;},async setJSON(key,value,opts){if((opts.onlyIfNew&&data)||(opts.onlyIfMatch&&opts.onlyIfMatch!==String(version)))return {modified:false};data=structuredClone(value);version++;return {modified:true};}};
-const env={...process.env};
+const env={SESSION_SECRET:process.env.SESSION_SECRET||randomBytes(32).toString('hex')};
 const types={'.html':'text/html','.mjs':'text/javascript','.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml','.png':'image/png','.webmanifest':'application/manifest+json'};
 createServer(async(req,res)=>{try{
   const url=new URL(req.url,'http://localhost:4173');

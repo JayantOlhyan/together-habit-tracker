@@ -17,21 +17,21 @@ A private habit tracker for **Jayant, Babita, and Naveen**, with a responsive, W
 
 Import this GitHub repository into Netlify. `netlify.toml` supplies the test/build command, output folder, and function directory. Node 22 is configured. Netlify automatically provisions access to the site-wide `together-family` Blobs store on the first real write; it persists across deploys. Do not replace it with a deploy-specific store.
 
-### Required private access setup
+### Sign-in
 
-In **Project configuration → Environment variables**, add these **three different passphrases**, each at least 12 characters long:
+The owner chose each person's name as their password. Matching is case-insensitive:
 
-| Variable | Person |
+| Profile | Password |
 | --- | --- |
-| `JAYANT_PASSWORD` | Jayant |
-| `BABITA_PASSWORD` | Babita |
-| `NAVEEN_PASSWORD` | Naveen |
+| Jayant | jayant |
+| Babita | babita |
+| Naveen | naveen |
 
-Make them available to **Functions** in **Production**. For accounts without scope controls, the default runtime scopes are sufficient. Do not enable these secrets for untrusted deploy previews. Trigger a new production deployment after setting or changing them. Optionally add a random `SESSION_SECRET`; otherwise the signing key derives from all three passphrases. Changing the signing material invalidates existing sessions. Give each person only their own passphrase. Never commit credentials or real habit records to GitHub.
+These passwords are easy to guess and offer minimal privacy. Anyone who knows the names can sign in to those profiles. They should not be treated as secure protection for sensitive records.
 
-Until configured, the app locks the shared API and shows setup guidance. The UI remains previewable using “Try a device-only preview.” There is deliberately no public first-visitor setup endpoint and no default password.
+No password environment variables are required. A random 256-bit session signing key is automatically created in the private site-wide Blobs store with an atomic create-if-new write. Both API functions read the same key; it survives deploys and never enters the browser or GitHub. An optional `SESSION_SECRET` environment variable (at least 32 characters) overrides that key. Changing it invalidates existing sessions.
 
-Sessions last seven days. Server-side passphrase verification uses constant-time digest comparison. This small private-circle authentication has no automated password recovery; the Netlify account owner rotates passphrases in environment variables. Signing and data access remain on the server.
+Sessions last seven days. The server compares name passwords case-insensitively using constant-time digest comparison. The old `JAYANT_PASSWORD`, `BABITA_PASSWORD`, and `NAVEEN_PASSWORD` variables are no longer used.
 
 ## Local development
 
@@ -42,7 +42,7 @@ npm run build
 npm run dev
 ```
 
-Open `http://localhost:4173`. The local QA server uses memory, not the production store, and starts with private access locked unless the three passphrases are supplied as process environment variables. It does not load `.env` automatically. The device preview requires no credentials. For the deployed Functions/Blobs runtime use Netlify CLI's official local development workflow.
+Open `http://localhost:4173`. The local QA server uses memory, not the production store, and generates a temporary random session signing key. Use the profile names to sign in. It does not load `.env` automatically. The device preview requires no credentials. For the deployed Functions/Blobs runtime use Netlify CLI's official local development workflow.
 
 ## Behaviour and limits
 
